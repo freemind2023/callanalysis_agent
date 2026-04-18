@@ -18,6 +18,8 @@ Analyse the provided sales call transcript (may be in Marathi, Hindi, or English
 7. ENTHUSIASM & ENERGY (0-10): Positive, confident, motivating tone
 8. CLOSING (0-10): Proper close, follow-up commitment taken
 
+Note: If the call type is "Nurturing Call", adjust scoring context — this is a follow-up call to an existing lead, so focus on relationship building, re-engagement, and moving the lead forward rather than initial pitch.
+
 Respond ONLY in this exact JSON format (no markdown, no explanation):
 {
   "scores": {
@@ -43,15 +45,16 @@ Set marathi_flag true if transcript contains Marathi.`
 
 export async function POST(req: NextRequest) {
   try {
-    const { transcript, callerName, course } = await req.json()
+    const { transcript, callerName, course, salesCaller } = await req.json()
 
     if (!transcript || transcript.trim().length === 0) {
       return NextResponse.json({ error: 'Transcript is empty' }, { status: 400 })
     }
 
     const userMessage = [
-      callerName ? `Caller Name: ${callerName}` : '',
-      `Course Enquiry: ${course || 'Not specified'}`,
+      salesCaller ? `Sales Caller: ${salesCaller}` : '',
+      callerName ? `Student Name: ${callerName}` : '',
+      `Course / Call Type: ${course || 'Not specified'}`,
       '',
       'Transcript:',
       transcript,
@@ -67,11 +70,8 @@ export async function POST(req: NextRequest) {
     })
 
     const block = message.content[0]
-    if (block.type !== 'text') {
-      throw new Error('Unexpected content type from Claude')
-    }
+    if (block.type !== 'text') throw new Error('Unexpected content type from Claude')
 
-    // Strip any accidental markdown fences before parsing
     const raw = block.text.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim()
     const review = JSON.parse(raw)
 

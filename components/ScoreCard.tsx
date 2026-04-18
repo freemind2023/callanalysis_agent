@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 interface ParameterScore {
   score: number
   comment: string
@@ -27,7 +29,9 @@ export interface ReviewResult {
 interface Props {
   result: ReviewResult
   callerName?: string
+  salesCaller?: string
   course?: string
+  durationSecs?: number
 }
 
 const PARAMETERS: { key: keyof ReviewResult['scores']; label: string }[] = [
@@ -50,6 +54,15 @@ function gradeStyle(grade: string) {
   }
 }
 
+function gradeLabel(grade: string) {
+  switch (grade) {
+    case 'A': return 'Excellent'
+    case 'B': return 'Good'
+    case 'C': return 'Average'
+    default:  return 'Needs Work'
+  }
+}
+
 function scoreBarColor(score: number) {
   if (score >= 8) return 'bg-green-500'
   if (score >= 6) return 'bg-blue-500'
@@ -64,36 +77,58 @@ function scoreTextColor(score: number) {
   return 'text-red-700'
 }
 
-export default function ScoreCard({ result, callerName, course }: Props) {
+export default function ScoreCard({ result, callerName, salesCaller, course, durationSecs }: Props) {
   const percentage = Math.round((result.total / 80) * 100)
   const printDate = new Date().toLocaleDateString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric',
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 mt-6 max-w-3xl mx-auto print:shadow-none print:p-4">
+    <div className="bg-white rounded-2xl shadow-lg p-6 mt-6 max-w-3xl mx-auto print:shadow-none print:p-4 print:mt-0">
+
+      {/* Print header — only visible when printing */}
+      <div className="hidden print:flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
+        <Image src="/peslogo.png" alt="PES" width={48} height={48} className="object-contain" />
+        <div>
+          <p className="font-bold text-gray-900 text-sm">Practical Eduskills</p>
+          <p className="text-xs text-gray-500">Call Quality Report · {printDate}</p>
+        </div>
+      </div>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6 print:mb-4">
-        <div>
+      <div className="flex items-start justify-between mb-5">
+        <div className="space-y-0.5">
           <h2 className="text-xl font-bold text-gray-900">Call Quality Report</h2>
-          <p className="text-sm text-gray-500 mt-0.5">{printDate}</p>
-          {callerName && <p className="text-sm text-gray-700 mt-1">Caller: <span className="font-medium">{callerName}</span></p>}
+          <p className="text-xs text-gray-400">{printDate}</p>
+          {salesCaller && (
+            <p className="text-sm text-gray-700 mt-1">
+              Sales Caller: <span className="font-semibold text-blue-900">{salesCaller}</span>
+            </p>
+          )}
+          {callerName && <p className="text-sm text-gray-700">Student: <span className="font-medium">{callerName}</span></p>}
           {course && <p className="text-sm text-gray-700">Course: <span className="font-medium">{course}</span></p>}
+          {durationSecs && durationSecs > 0 && (
+            <p className="text-xs text-gray-400">
+              Duration: {Math.floor(durationSecs / 60)}m {Math.round(durationSecs % 60)}s
+            </p>
+          )}
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
           <div className="text-right">
-            <span className="text-4xl font-extrabold text-gray-900">{result.total}</span>
+            <span className="text-5xl font-extrabold text-gray-900">{result.total}</span>
             <span className="text-xl text-gray-400">/80</span>
-            <span className="ml-2 text-lg font-semibold text-gray-500">({percentage}%)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className={`px-4 py-1 rounded-full border-2 text-2xl font-black ${gradeStyle(result.grade)}`}>
+          <div className="text-right text-sm text-gray-500">{percentage}%</div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <span className={`px-3 py-1 rounded-full border-2 text-xl font-black ${gradeStyle(result.grade)}`}>
               {result.grade}
             </span>
+            <span className={`text-xs font-medium px-2 py-1 rounded-full ${gradeStyle(result.grade)}`}>
+              {gradeLabel(result.grade)}
+            </span>
             {result.marathi_flag && (
-              <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-medium border border-purple-300">
-                Marathi Call ✓
+              <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium border border-purple-300">
+                Marathi ✓
               </span>
             )}
           </div>
@@ -104,22 +139,19 @@ export default function ScoreCard({ result, callerName, course }: Props) {
       <div className="space-y-3 mb-6">
         {PARAMETERS.map(({ key, label }) => {
           const { score, comment } = result.scores[key]
-          const barPct = (score / 10) * 100
           return (
-            <div key={key} className="group">
+            <div key={key}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-gray-700">{label}</span>
                 <span className={`text-sm font-bold ${scoreTextColor(score)}`}>{score}/10</span>
               </div>
-              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${scoreBarColor(score)}`}
-                  style={{ width: `${barPct}%` }}
+                  className={`h-full rounded-full transition-all duration-500 ${scoreBarColor(score)}`}
+                  style={{ width: `${(score / 10) * 100}%` }}
                 />
               </div>
-              {comment && (
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{comment}</p>
-              )}
+              {comment && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{comment}</p>}
             </div>
           )
         })}
@@ -138,8 +170,7 @@ export default function ScoreCard({ result, callerName, course }: Props) {
           <ul className="space-y-1.5">
             {result.top_strengths.map((s, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                <span className="text-green-500 mt-0.5 shrink-0">●</span>
-                {s}
+                <span className="text-green-500 mt-0.5 shrink-0">●</span>{s}
               </li>
             ))}
           </ul>
@@ -149,8 +180,7 @@ export default function ScoreCard({ result, callerName, course }: Props) {
           <ul className="space-y-1.5">
             {result.areas_to_improve.map((a, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                <span className="text-orange-400 mt-0.5 shrink-0">●</span>
-                {a}
+                <span className="text-orange-400 mt-0.5 shrink-0">●</span>{a}
               </li>
             ))}
           </ul>
