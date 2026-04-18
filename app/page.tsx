@@ -14,13 +14,21 @@ const MAX_FILE_SIZE_MB = 25
 const ACCEPTED_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a', 'audio/ogg', 'audio/webm']
 const ACCEPTED_EXT = '.mp3,.wav,.m4a,.ogg,.webm'
 
+const USD_TO_INR = 84
+
 // Deepgram Nova-2: $0.0043/min | Claude Sonnet 4.6: $3/MTok in, $15/MTok out
 function estimateCost(durationSecs: number) {
   const mins = durationSecs / 60
-  const deepgramCost = mins * 0.0043
+  const deepgramUSD = mins * 0.0043
   const inputTokens = 800 + Math.round(mins * 200)
-  const claudeCost = (inputTokens * 3 + 450 * 15) / 1_000_000
-  return { deepgramCost, claudeCost, total: deepgramCost + claudeCost, mins }
+  const claudeUSD = (inputTokens * 3 + 450 * 15) / 1_000_000
+  const totalUSD = deepgramUSD + claudeUSD
+  return {
+    deepgramINR: deepgramUSD * USD_TO_INR,
+    claudeINR:   claudeUSD   * USD_TO_INR,
+    totalINR:    totalUSD    * USD_TO_INR,
+    mins,
+  }
 }
 
 function getAudioDuration(file: File): Promise<number> {
@@ -212,11 +220,11 @@ export default function Home() {
                   <span>
                     <span className="font-semibold">~{fmtDuration(audioDuration)}</span>
                     <span className="mx-1.5 text-amber-400">·</span>
-                    Transcription <span className="font-semibold">${cost.deepgramCost.toFixed(4)}</span>
+                    Transcription <span className="font-semibold">₹{cost.deepgramINR.toFixed(2)}</span>
                     <span className="mx-1.5 text-amber-400">+</span>
-                    AI Analysis <span className="font-semibold">${cost.claudeCost.toFixed(4)}</span>
+                    AI Analysis <span className="font-semibold">₹{cost.claudeINR.toFixed(2)}</span>
                     <span className="mx-1.5 text-amber-400">=</span>
-                    Est. cost <span className="font-semibold text-amber-900">${cost.total.toFixed(4)}</span>
+                    Est. cost <span className="font-semibold text-amber-900">₹{cost.totalINR.toFixed(2)}</span>
                   </span>
                 </div>
               )}
